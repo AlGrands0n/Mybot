@@ -1,17 +1,18 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from flask import Flask
+import threading
 
 # توكن البوت
 API_TOKEN = '7384121018:AAGItlGVQY8FR3xemQSjU6JpL_Zrppcza-8'
 CHANNEL_USERNAME = '@talabaksyria'  # معرف القناة
+ADMIN_ID = 809571974  # معرف الأدمن
 
 bot = telebot.TeleBot(API_TOKEN)
+app = Flask(__name__)
 
 # لتخزين الطلبات المعلقة (معاينة للموافقة)
 pending_orders = {}
-
-# معرف المدير (إبراهيم) حتى يستقبل الطلبات للموافقة
-ADMIN_ID = 809571974
 
 # أمر /start
 @bot.message_handler(commands=['start'])
@@ -31,13 +32,10 @@ def send_welcome(message):
 def handle_user_message(message):
     user_id = message.from_user.id
 
-    # تخزين الطلب في pending_orders
     if user_id not in pending_orders:
         pending_orders[user_id] = []
 
-    # حفظ الرسالة (صور أو نصوص)
     pending_orders[user_id].append(message)
-
     bot.reply_to(message, "تم استلام طلبك، أرسل كل التفاصيل المطلوبة أو اكتب /done لإنهاء الطلب.")
 
 # أمر /done لإنهاء التجميع وإرسال المعاينة للإدمن
@@ -52,12 +50,10 @@ def done_collecting(message):
     order_msgs = pending_orders[user_id]
     del pending_orders[user_id]
 
-    # تجميع الرسالة للعرض على الأدمن
     media_group = []
     text_parts = []
     for msg in order_msgs:
         if msg.content_type == 'photo':
-            # نضيف الصورة للمعاينة
             file_id = msg.photo[-1].file_id
             media_group.append(telebot.types.InputMediaPhoto(file_id))
         elif msg.content_type == 'text':
@@ -73,7 +69,6 @@ def done_collecting(message):
     )
 
     if media_group:
-        # إرسال مجموعة صور مع التعليق
         bot.send_media_group(ADMIN_ID, media_group)
         bot.send_message(ADMIN_ID, preview_caption, reply_markup=markup)
     else:
@@ -94,21 +89,27 @@ def callback_inline(call):
             return
 
         if action == 'approve':
-            # نرسل الطلب للقناة
             send_order_to_channel(user_id)
             bot.answer_callback_query(call.id, "تم نشر الطلب.")
             bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
 
         elif action == 'reject':
-            # نرسل رسالة رفض للمستخدم
             bot.send_message(user_id, "نأسف، تم رفض طلبك من قبل الإدارة.")
             bot.answer_callback_query(call.id, "تم رفض الطلب.")
             bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
 
 def send_order_to_channel(user_id):
-    # إرسال رسالة نصية للقناة كمثال
     bot.send_message(CHANNEL_USERNAME, f"تم نشر طلب جديد من مستخدم معرّف: {user_id}\n\n(الطلب هنا يحتاج تخزين مفصل لاحقاً)")
 
-if __name__ == '__main__':
-    print("البوت شغال...")
+# 🚀 سيرفر ويب بسيط ليرضى Render
+@app.route('/')
+def home():
+    return "بوت طلبك شغّال 💡"
+
+# 🔁 تشغيل البوت والسيرفر مع بعض
+def run():
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=10000)).start()
     bot.infinity_polling()
+
+if __name__ == '__main__':
+    run()
