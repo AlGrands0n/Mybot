@@ -3,15 +3,15 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask
 import threading
 
-# توكن البوت
-API_TOKEN = '7384121018:AAGItlGVQY8FR3xemQSjU6JpL_Zrppcza-8'
+# توكن البوت (استبدل هذا بالتوكن الجديد إذا تغير)
+API_TOKEN = '7384121018:AAFmne7_-lbqAgnFgBFhi6uUjcs9NmNHZb4'
 CHANNEL_USERNAME = '@talabaksyria'  # معرف القناة
 ADMIN_ID = 809571974  # معرف الأدمن
 
 bot = telebot.TeleBot(API_TOKEN)
 app = Flask(__name__)
 
-# لتخزين الطلبات المعلقة (معاينة للموافقة)
+# تخزين الطلبات المعلقة للموافقة
 pending_orders = {}
 
 # أمر /start
@@ -27,14 +27,12 @@ def send_welcome(message):
     )
     bot.reply_to(message, welcome_text)
 
-# استقبال أي رسالة (صور، نصوص) من المستخدم
+# استقبال النصوص والصور من المستخدم
 @bot.message_handler(content_types=['text', 'photo'])
 def handle_user_message(message):
     user_id = message.from_user.id
-
     if user_id not in pending_orders:
         pending_orders[user_id] = []
-
     pending_orders[user_id].append(message)
     bot.reply_to(message, "تم استلام طلبك، أرسل كل التفاصيل المطلوبة أو اكتب /done لإنهاء الطلب.")
 
@@ -42,7 +40,6 @@ def handle_user_message(message):
 @bot.message_handler(commands=['done'])
 def done_collecting(message):
     user_id = message.from_user.id
-
     if user_id not in pending_orders or not pending_orders[user_id]:
         bot.reply_to(message, "لم ترسل أي شيء بعد.")
         return
@@ -76,7 +73,7 @@ def done_collecting(message):
 
     bot.reply_to(message, "تم إرسال طلبك للموافقة وسيتم الرد عليك قريبًا.")
 
-# التعامل مع أزرار الموافقة أو الرفض
+# التعامل مع أزرار الموافقة والرفض
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
     data = call.data
@@ -101,12 +98,12 @@ def callback_inline(call):
 def send_order_to_channel(user_id):
     bot.send_message(CHANNEL_USERNAME, f"تم نشر طلب جديد من مستخدم معرّف: {user_id}\n\n(الطلب هنا يحتاج تخزين مفصل لاحقاً)")
 
-# 🚀 سيرفر ويب بسيط ليرضى Render
+# سيرفر ويب بسيط ليشتغل على Render
 @app.route('/')
 def home():
     return "بوت طلبك شغّال 💡"
 
-# 🔁 تشغيل البوت والسيرفر مع بعض
+# تشغيل البوت والسيرفر معاً بخيوط متعددة
 def run():
     threading.Thread(target=lambda: app.run(host="0.0.0.0", port=10000)).start()
     bot.infinity_polling()
